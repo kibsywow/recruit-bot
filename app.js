@@ -245,10 +245,9 @@ async function fetchPlayerInfo(accessToken, server, name) {
  * @param {{author: {name: string;};thumbnail: {url: string;};color: number;fields: {name: string;value: string;inline: boolean;}[];}} webhookData
  * @param {string} webhookURL
  */
-async function sendWebhook(webhookData, webhookURL) {
-
+async function sendWebhookWithRetry(webhookData, webhookURL, env) {
   const data = {
-    "embeds": [webhookData]
+    embeds: [webhookData],
   };
 
   const res = await fetch(webhookURL, {
@@ -261,11 +260,52 @@ async function sendWebhook(webhookData, webhookURL) {
 
   if (!res.ok) {
     console.log(`Failed to send webhook data: ${res.status} ${res.statusText}`);
-    console.log(data);
+    // Add to retry queue if not successful
+    const retryQueueRaw = await env.lfg.get('retryQueue');
+    const retryQueue = retryQueueRaw ? JSON.parse(retryQueueRaw) : [];
+    retryQueue.push(webhookData); // Add failed webhook to queue
+    await env.lfg.put('retryQueue', JSON.stringify(retryQueue));
   } else {
     console.log(`Sent webhook data for ${webhookData.author.name}`);
-  }  
+  }
 }
+
+async function processRetryQueue(env, webhookURL) {
+  const retryQueueRaw = await env.lfg.get('retryQueue');
+  if (!retryQueueRaw) return;
+
+  const retryQueue = JSON.parse(retryQueueRaw);
+  const remainingQueue = [];
+
+  for (const webhookData of retryQueue) {
+    const data = {
+      embeds: [webhookData],
+    };
+
+    const res = await fetch(webhookURL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      console.log(`Retry failed for ${webhookData.author.name}: ${res.status} ${res.statusText}`);
+      remainingQueue.push(webhookData); // Keep in the queue if retry fails
+    } else {
+      console.log(`Retry succeeded for ${webhookData.author.name}`);
+    }
+  }
+
+  // Update the retry queue
+  if (remainingQueue.length > 0) {
+    await env.lfg.put('retryQueue', JSON.stringify(remainingQueue));
+  } else {
+    await env.lfg.delete('retryQueue'); // Clear the queue if empty
+  }
+}
+
 
 // Cron 15 minute trigger
 export default {
@@ -280,6 +320,7 @@ export default {
   },
 
   async processLFG(env) {
+    await processRetryQueue(env, env.DISCORD_WEBHOOK);
     // Fetch from wowprog
     const all = await fetchLFG();
 
@@ -305,7 +346,7 @@ export default {
     for (const player of lfg) {
       const webhookData = await fetchPlayerInfo(token, player.server, player.name);
       if (webhookData) {
-        await sendWebhook(webhookData, env.DISCORD_WEBHOOK);
+        await sendWebhookWithRetry(webhookData, env.DISCORD_WEBHOOK, env);
       } else {
         console.log(`Filtered ${decodeURIComponent(player.name)}-${player.server}`);
       }
@@ -321,6 +362,8 @@ export default {
 //    * @param {any} ctx
 //    */
 //   async fetch(request, env, ctx) {
+//     await processRetryQueue(env, env.DEBUG_DISCORD_WEBHOOK);
+
 //     const all = await fetchLFG();
 
 //     let lfg = all;
@@ -335,11 +378,12 @@ export default {
 
 //     const token = await fetchToken(env.BNET_ID, env.BNET_SECRET);
 //     const testData = ["zul-jin.Ioannides","sargeras.Chrysus","thrall.Bobate%C3%A4","dalaran.Brixion","frostmourne.Asdaral","illidan.Tr%C3%A2ps","area-52.Getrights","area-52.Getright","frostmourne.Kallaen","moon-guard.Warcron","zul-jin.Datbagels","tichondrius.Scottye","proudmoore.Sarutahiko","area-52.Nadlerpos","area-52.Authentikz","zul-jin.Sflukablak","mal-ganis.Yaengsham","thunderhorn.Elamlock","bleeding-hollow.Glockateer","frostmourne.Tape","illidan.Denylock","thrall.Cerai","barthilas.Saket"]
-
+//     // const testData = ["zul-jin.Ioannides"]
+    
 //     for (const player of testData) {  // const player in lfg
-//       const webhookData = await fetchPlayerInfo(token, player.server, player.name);
+//       const webhookData = await fetchPlayerInfo(token, player.split(".")[0], player.split(".")[1]);
 //       if (webhookData) {
-//         await sendWebhook(webhookData, env.DEBUG_DISCORD_WEBHOOK);
+//         await sendWebhookWithRetry(webhookData, env.DEBUG_DISCORD_WEBHOOK, env);
 //       } else {
 //         console.log(`Filtered ${decodeURIComponent(player)}`);
 //       }
