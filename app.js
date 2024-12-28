@@ -245,9 +245,10 @@ async function fetchPlayerInfo(accessToken, server, name) {
  * @param {{author: {name: string;};thumbnail: {url: string;};color: number;fields: {name: string;value: string;inline: boolean;}[];}} webhookData
  * @param {string} webhookURL
  */
-async function sendWebhookWithRetry(webhookData, webhookURL, env) {
+async function sendWebhook(webhookData, webhookURL) {
+
   const data = {
-    embeds: [webhookData],
+    "embeds": [webhookData]
   };
 
   const res = await fetch(webhookURL, {
@@ -259,53 +260,13 @@ async function sendWebhookWithRetry(webhookData, webhookURL, env) {
   });
 
   if (!res.ok) {
-    console.log(`Failed to send webhook data: ${res.status} ${res.statusText}`);
-    // Add to retry queue if not successful
-    const retryQueueRaw = await env.lfg.get('retryQueue');
-    const retryQueue = retryQueueRaw ? JSON.parse(retryQueueRaw) : [];
-    retryQueue.push(webhookData); // Add failed webhook to queue
-    await env.lfg.put('retryQueue', JSON.stringify(retryQueue));
+    console.log(`Failed to send webhook data for ${webhookData.author.name}: ${res.status} ${res.statusText}`);
+    return false;
   } else {
     console.log(`Sent webhook data for ${webhookData.author.name}`);
-  }
+    return true;
+  }  
 }
-
-async function processRetryQueue(env, webhookURL) {
-  const retryQueueRaw = await env.lfg.get('retryQueue');
-  if (!retryQueueRaw) return;
-
-  const retryQueue = JSON.parse(retryQueueRaw);
-  const remainingQueue = [];
-
-  for (const webhookData of retryQueue) {
-    const data = {
-      embeds: [webhookData],
-    };
-
-    const res = await fetch(webhookURL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      console.log(`Retry failed for ${webhookData.author.name}: ${res.status} ${res.statusText}`);
-      remainingQueue.push(webhookData); // Keep in the queue if retry fails
-    } else {
-      console.log(`Retry succeeded for ${webhookData.author.name}`);
-    }
-  }
-
-  // Update the retry queue
-  if (remainingQueue.length > 0) {
-    await env.lfg.put('retryQueue', JSON.stringify(remainingQueue));
-  } else {
-    await env.lfg.delete('retryQueue'); // Clear the queue if empty
-  }
-}
-
 
 // Cron 15 minute trigger
 export default {
@@ -320,37 +281,45 @@ export default {
   },
 
   async processLFG(env) {
-    await processRetryQueue(env, env.DISCORD_WEBHOOK);
     // Fetch from wowprog
     const all = await fetchLFG();
-
+  
     // Filter characters we've seen recently
     let lfg = all;
     const prevRaw = await env.lfg.get('prev');
-
+    let prev = [];
+  
     if (prevRaw) {
-      const prev = JSON.parse(prevRaw);
+      prev = JSON.parse(prevRaw);
       lfg = all.filter((l) => !prev.includes(l.id));
-
-      // Filter "new listees" if found at the bottom to prevent a de-lister from tricking script into thinking a new person has listed when they move up from second page
+  
+      // Filter "new listees" at the bottom to prevent de-listers tricking the script
       const bottomSlice = all.slice(-5).map((l) => l.id);
       lfg = lfg.filter((l) => !bottomSlice.includes(l.id));
     }
-
-    // Store prev result
-    await env.lfg.put('prev', JSON.stringify(all.map((l) => l.id)));
-
+  
+    const failedPlayers = []; // List to track webhook failures
+  
     // Get Blizzard API token
     const token = await fetchToken(env.BNET_ID, env.BNET_SECRET);
-
+  
     for (const player of lfg) {
       const webhookData = await fetchPlayerInfo(token, player.server, player.name);
       if (webhookData) {
-        await sendWebhookWithRetry(webhookData, env.DISCORD_WEBHOOK, env);
+        const ret = await sendWebhook(webhookData, env.DISCORD_WEBHOOK);
+        if (!ret) {
+          failedPlayers.push(`${player.server}.${player.name}`);
+        }
       } else {
         console.log(`Filtered ${decodeURIComponent(player.name)}-${player.server}`);
       }
     }
+  
+    // Remove failed players from prev
+    prev = prev.filter((id) => !failedPlayers.includes(id));
+  
+    // Store updated prev result
+    await env.lfg.put('prev', JSON.stringify(all.map((l) => l.id).filter((id) => !failedPlayers.includes(id))));
   },
 };
 
@@ -362,8 +331,6 @@ export default {
 //    * @param {any} ctx
 //    */
 //   async fetch(request, env, ctx) {
-//     await processRetryQueue(env, env.DEBUG_DISCORD_WEBHOOK);
-
 //     const all = await fetchLFG();
 
 //     let lfg = all;
@@ -378,12 +345,11 @@ export default {
 
 //     const token = await fetchToken(env.BNET_ID, env.BNET_SECRET);
 //     const testData = ["zul-jin.Ioannides","sargeras.Chrysus","thrall.Bobate%C3%A4","dalaran.Brixion","frostmourne.Asdaral","illidan.Tr%C3%A2ps","area-52.Getrights","area-52.Getright","frostmourne.Kallaen","moon-guard.Warcron","zul-jin.Datbagels","tichondrius.Scottye","proudmoore.Sarutahiko","area-52.Nadlerpos","area-52.Authentikz","zul-jin.Sflukablak","mal-ganis.Yaengsham","thunderhorn.Elamlock","bleeding-hollow.Glockateer","frostmourne.Tape","illidan.Denylock","thrall.Cerai","barthilas.Saket"]
-//     // const testData = ["zul-jin.Ioannides"]
-    
+
 //     for (const player of testData) {  // const player in lfg
-//       const webhookData = await fetchPlayerInfo(token, player.split(".")[0], player.split(".")[1]);
+//       const webhookData = await fetchPlayerInfo(token, player.server, player.name);
 //       if (webhookData) {
-//         await sendWebhookWithRetry(webhookData, env.DEBUG_DISCORD_WEBHOOK, env);
+//         await sendWebhook(webhookData, env.DEBUG_DISCORD_WEBHOOK);
 //       } else {
 //         console.log(`Filtered ${decodeURIComponent(player)}`);
 //       }
