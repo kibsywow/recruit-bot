@@ -157,17 +157,17 @@ async function fetchPlayerInfo(accessToken, server, name) {
   const npRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
     npRaidIds.includes(ach.id)
   ).length;
-  // const louRaidIds = [?????, ?????, ?????, ?????, ?????, ?????, ?????, ?????]
-  // const louRaidKills = body5.achievements.filter((/** @type {{ id: number; }} */ ach) =>
-  //   louRaidIds.includes(ach.id)
-  // ).length;
+  const louRaidIds = [41229, 41230, 41231, 41232, 41233, 41234, 41235, 41236]
+  const louRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+    louRaidIds.includes(ach.id)
+  ).length;
 
   // Cutting edge
   const voiCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 17108).length;
   const abbCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 18254).length;
   const adhCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 19351).length;
   const npCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 40254).length;
-  // const louCE = body5.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === ?????).length;
+  const louCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 41297).length;
 
   // Get player URLs
   const wowArmoryURL = `https://worldofwarcraft.com/en-us/character/us/${serverSlug}/${name.toLowerCase()}`;
@@ -206,8 +206,8 @@ async function fetchPlayerInfo(accessToken, server, name) {
         "value": `**VoI:** ${voiRaidKills}/${voiRaidIds.length} M ${voiCE ? "[CE]" : ""}\n` +
         `**ASC:** ${abbRaidKills}/${abbRaidIds.length} M ${abbCE ? "[CE]" : ""}\n` +
         `**ADH:** ${adhRaidKills}/${adhRaidIds.length} M ${adhCE ? "[CE]" : ""}\n` +
-        `**NP:** ${npRaidKills}/${npRaidIds.length} M ${npCE ? "[CE]" : ""}`, // + \n
-        // `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}`,
+        `**NP:** ${npRaidKills}/${npRaidIds.length} M ${npCE ? "[CE]" : ""}\n` +
+        `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}`,
         "inline": true
       },
       {
@@ -233,7 +233,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
     ]
   }
 
-  if (voiCE || abbCE || adhCE || npCE || npRaidKills >= 2) { // || louRaidKills >= 2
+  if (voiCE || abbCE || adhCE || npCE || louCE || npRaidKills >= 2 || louRaidKills >= 2) {
     return webhookData;
   } else {
     return false;
