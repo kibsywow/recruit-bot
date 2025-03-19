@@ -94,10 +94,10 @@ async function fetchPlayerInfo(accessToken, server, name) {
   }
 
   const playerProfile = await res2.json();
-  const itemLevel = playerProfile?.equipped_item_level ?? "0";
-  const className = playerProfile.character_class.name;
-  const currentSpecId = playerProfile.active_spec.id;
-  const guildName = playerProfile?.guild?.name ?? ""; 
+  const itemLevel = playerProfile?.equipped_item_level ?? "?";
+  const className = playerProfile?.character_class?.name ?? "Default";
+  const currentSpecId = playerProfile?.active_spec?.id ?? "Unknown";
+  const guildName = playerProfile?.guild?.name ?? "?"; 
 
   // Get player's specialization media thumbnail
   const res3 = await fetch(`https://us.api.blizzard.com/data/wow/media/playable-specialization/${currentSpecId}?namespace=static-us&locale=en_US`, {
@@ -111,7 +111,9 @@ async function fetchPlayerInfo(accessToken, server, name) {
   }
 
   const blizzSpecMedia = await res3.json();
-  const thumbnailURL = blizzSpecMedia?.assets[0]?.value ?? "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/WoW_icon.svg/1200px-WoW_icon.svg.png";
+  const thumbnailURL = (Array.isArray(blizzSpecMedia?.assets) && blizzSpecMedia.assets.length > 0) 
+      ? blizzSpecMedia.assets[0].value 
+      : "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/WoW_icon.svg/1200px-WoW_icon.svg.png";
 
   // Get player's current mythic+ rating
   const res4 = await fetch(`https://us.api.blizzard.com/profile/wow/character/${serverSlug}/${name.toLowerCase()}/mythic-keystone-profile?namespace=profile-us&locale=en_US`, {
@@ -125,7 +127,9 @@ async function fetchPlayerInfo(accessToken, server, name) {
   }
 
   const playerKeyProfile = await res4.json();
-  const mythicPlusRating = Math.floor(playerKeyProfile?.current_mythic_rating?.rating) ?? '0';
+  const mythicPlusRating = Number.isFinite(playerKeyProfile?.current_mythic_rating?.rating) 
+      ? Math.floor(playerKeyProfile.current_mythic_rating.rating) 
+      : '?';
 
   // Get player's raid progression
   const res5 = await fetch(`https://us.api.blizzard.com/profile/wow/character/${serverSlug}/${name.toLowerCase()}/achievements?namespace=profile-us&locale=en_US`, {
@@ -142,32 +146,32 @@ async function fetchPlayerInfo(accessToken, server, name) {
 
   // Mythic kills
   const voiRaidIds = [16346, 16347, 16348, 16349, 16350, 16351, 16352, 16353]
-  const voiRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+  const voiRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
     voiRaidIds.includes(ach.id)
-  ).length;
+    )?.length || "?";
   const abbRaidIds = [18151, 18152, 18153, 18154, 18155, 18156, 18157, 18158, 18159]
-  const abbRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+  const abbRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
     abbRaidIds.includes(ach.id)
-  ).length;
+    )?.length || "?";
   const adhRaidIds = [19335, 19336, 19337, 19338, 19339, 19340, 19341, 19342, 19343]
-  const adhRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+  const adhRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
     adhRaidIds.includes(ach.id)
-  ).length;
+    )?.length || "?";
   const npRaidIds = [40236, 40237, 40238, 40239, 40240, 40241, 40242, 40243]
-  const npRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+  const npRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
     npRaidIds.includes(ach.id)
-  ).length;
+    )?.length || "?";
   const louRaidIds = [41229, 41230, 41231, 41232, 41233, 41234, 41235, 41236]
-  const louRaidKills = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) =>
+  const louRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
     louRaidIds.includes(ach.id)
-  ).length;
+    )?.length || "?";
 
   // Cutting edge
-  const voiCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 17108).length;
-  const abbCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 18254).length;
-  const adhCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 19351).length;
-  const npCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 40254).length;
-  const louCE = playerAch.achievements.filter((/** @type {{ id: number; }} */ ach) => ach.id === 41297).length;
+  const voiCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 17108).length || 0;
+  const abbCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 18254).length || 0;
+  const adhCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 19351).length || 0;
+  const npCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 40254).length || 0;
+  const louCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 41297).length || 0;
 
   // Get player URLs
   const wowArmoryURL = `https://worldofwarcraft.com/en-us/character/us/${serverSlug}/${name.toLowerCase()}`;
@@ -189,7 +193,8 @@ async function fetchPlayerInfo(accessToken, server, name) {
     'Rogue':0xFFF468,
     'Shaman':0x0070DD,
     'Warlock':0x8788EE,
-    'Warrior':0xC69B6D
+    'Warrior':0xC69B6D,
+    'Default':0x000000
 }
 
   const webhookData = {
@@ -233,7 +238,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
     ]
   }
 
-  if (voiCE || abbCE || adhCE || npCE || louCE || npRaidKills >= 2 || louRaidKills >= 2) {
+  if (voiCE || abbCE || adhCE || npCE || louCE || npRaidKills >= 2 || louRaidKills >= 2 || className == "Default") {
     return webhookData;
   } else {
     return false;
