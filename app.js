@@ -97,7 +97,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
   const itemLevel = playerProfile?.equipped_item_level ?? "?";
   const className = playerProfile?.character_class?.name ?? "Default";
   const currentSpecId = playerProfile?.active_spec?.id ?? "Unknown";
-  const guildName = playerProfile?.guild?.name ?? "?"; 
+  const guildName = playerProfile?.guild?.name ?? ""; 
 
   // Get player's specialization media thumbnail
   const res3 = await fetch(`https://us.api.blizzard.com/data/wow/media/playable-specialization/${currentSpecId}?namespace=static-us&locale=en_US`, {
