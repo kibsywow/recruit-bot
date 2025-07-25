@@ -30,12 +30,16 @@ async function fetchLFG() {
  * @param {string} clientSecret
  */
 async function fetchToken(clientId, clientSecret) {
-  const data = new URLSearchParams({ grant_type: 'client_credentials' });
 
-  const res = await fetch('https://us.battle.net/oauth/token', {
+  const data = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: clientId,
+    client_secret: clientSecret
+  });
+  
+  const res = await fetch('https://oauth.battle.net/token', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: data.toString(),
@@ -44,10 +48,11 @@ async function fetchToken(clientId, clientSecret) {
   if (!res.ok) {
     console.log(`Failed to fetch token: ${res.status} ${res.statusText}`);
   }
-
-  const body = await res.json();
-  return body.access_token;
+  
+  const json = await res.json();
+  return json.access_token;
 }
+
 
 /**
  * @param {string} accessToken
@@ -224,7 +229,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
         `**ASC:** ${abbRaidKills}/${abbRaidIds.length} M ${abbCE ? "[CE]" : ""}\n` +
         `**ADH:** ${adhRaidKills}/${adhRaidIds.length} M ${adhCE ? "[CE]" : ""}\n` +
         `**NP:** ${npRaidKills}/${npRaidIds.length} M ${npCE ? "[CE]" : ""}\n` +
-        `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}` +
+        `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}\n` +
         `**MFO:** ${mfoRaidKills}/${mfoRaidIds.length} M ${mfoCE ? "[CE]" : ""}`,
         "inline": true
       },
