@@ -225,7 +225,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
         `**ADH:** ${adhRaidKills}/${adhRaidIds.length} M ${adhCE ? "[CE]" : ""}\n` +
         `**NP:** ${npRaidKills}/${npRaidIds.length} M ${npCE ? "[CE]" : ""}\n` +
         `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}` +
-        `**LoU:** ${mfoRaidKills}/${mfoRaidIds.length} M ${mfoCE ? "[CE]" : ""}`,
+        `**MFO:** ${mfoRaidKills}/${mfoRaidIds.length} M ${mfoCE ? "[CE]" : ""}`,
         "inline": true
       },
       {
