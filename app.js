@@ -144,34 +144,46 @@ async function fetchPlayerInfo(accessToken, server, name) {
 
   const playerAch = await res5.json();
 
+  /**
+   * @param {number[]} raidIds
+   */
+  function getRaidKills(raidIds) {
+    if (!playerAch) return "?";
+    const kills = playerAch.achievements?.filter((/** @type {{ id: number; }} */ ach) => raidIds.includes(ach.id))?.length;
+    return kills === null || kills === undefined ? "0" : kills;
+  }
+  
   // Mythic kills
-  const voiRaidIds = [16346, 16347, 16348, 16349, 16350, 16351, 16352, 16353]
-  const voiRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
-    voiRaidIds.includes(ach.id)
-    )?.length || "?";
-  const abbRaidIds = [18151, 18152, 18153, 18154, 18155, 18156, 18157, 18158, 18159]
-  const abbRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
-    abbRaidIds.includes(ach.id)
-    )?.length || "?";
-  const adhRaidIds = [19335, 19336, 19337, 19338, 19339, 19340, 19341, 19342, 19343]
-  const adhRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
-    adhRaidIds.includes(ach.id)
-    )?.length || "?";
-  const npRaidIds = [40236, 40237, 40238, 40239, 40240, 40241, 40242, 40243]
-  const npRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
-    npRaidIds.includes(ach.id)
-    )?.length || "?";
-  const louRaidIds = [41229, 41230, 41231, 41232, 41233, 41234, 41235, 41236]
-  const louRaidKills = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) =>
-    louRaidIds.includes(ach.id)
-    )?.length || "?";
+  const voiRaidIds = [16346, 16347, 16348, 16349, 16350, 16351, 16352, 16353];
+  const voiRaidKills = getRaidKills(voiRaidIds);
+  
+  const abbRaidIds = [18151, 18152, 18153, 18154, 18155, 18156, 18157, 18158, 18159];
+  const abbRaidKills = getRaidKills(abbRaidIds);
+  
+  const adhRaidIds = [19335, 19336, 19337, 19338, 19339, 19340, 19341, 19342, 19343];
+  const adhRaidKills = getRaidKills(adhRaidIds);
+  
+  const npRaidIds = [40236, 40237, 40238, 40239, 40240, 40241, 40242, 40243];
+  const npRaidKills = getRaidKills(npRaidIds);
+  
+  const louRaidIds = [41229, 41230, 41231, 41232, 41233, 41234, 41235, 41236];
+  const louRaidKills = getRaidKills(louRaidIds);
 
+  const mfoRaidIds = [41604, 41605, 41606, 41607, 41608, 41609, 41610, 41611];
+  const mfoRaidKills = getRaidKills(mfoRaidIds);
+  
+
+  function getAchievement(id) {
+    return playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === id)?.length || 0;
+  }
+  
   // Cutting edge
-  const voiCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 17108).length || 0;
-  const abbCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 18254).length || 0;
-  const adhCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 19351).length || 0;
-  const npCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 40254).length || 0;
-  const louCE = playerAch?.achievements?.filter((/** @type {{ id: number; }} */ ach) => ach.id === 41297).length || 0;
+  const voiCE = getAchievement(17108);
+  const abbCE = getAchievement(18254);
+  const adhCE = getAchievement(19351);
+  const npCE = getAchievement(40254);
+  const louCE = getAchievement(41297);
+  const mfoCE = getAchievement(41625);
 
   // Get player URLs
   const wowArmoryURL = `https://worldofwarcraft.com/en-us/character/us/${serverSlug}/${name.toLowerCase()}`;
@@ -212,7 +224,8 @@ async function fetchPlayerInfo(accessToken, server, name) {
         `**ASC:** ${abbRaidKills}/${abbRaidIds.length} M ${abbCE ? "[CE]" : ""}\n` +
         `**ADH:** ${adhRaidKills}/${adhRaidIds.length} M ${adhCE ? "[CE]" : ""}\n` +
         `**NP:** ${npRaidKills}/${npRaidIds.length} M ${npCE ? "[CE]" : ""}\n` +
-        `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}`,
+        `**LoU:** ${louRaidKills}/${louRaidIds.length} M ${louCE ? "[CE]" : ""}` +
+        `**LoU:** ${mfoRaidKills}/${mfoRaidIds.length} M ${mfoCE ? "[CE]" : ""}`,
         "inline": true
       },
       {
@@ -238,7 +251,7 @@ async function fetchPlayerInfo(accessToken, server, name) {
     ]
   }
 
-  if (voiCE || abbCE || adhCE || npCE || louCE || npRaidKills >= 2 || louRaidKills >= 2 || className == "Default") {
+  if (voiCE || abbCE || adhCE || npCE || louCE || mfoCE || npRaidKills >= 2 || louRaidKills >= 2 || mfoRaidKills >= 2 || className == "Default") {
     return webhookData;
   } else {
     return false;
